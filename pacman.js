@@ -23,6 +23,8 @@ var NONE        = 4,
 
 Pacman.FPS = 30;
 
+Pacman.Player = null;
+
 Pacman.Ghost = function (game, map, colour) {
 
     var position  = null,
@@ -42,6 +44,10 @@ Pacman.Ghost = function (game, map, colour) {
             "y": addBounded(current.y, ySpeed)
         };
     };
+
+    function getPosition(){
+        return position.clone() ?? null;
+    }
 
     /* Collision detection(walls) is done when a ghost lands on an
      * exact block, make sure they dont skip over it 
@@ -266,6 +272,7 @@ Pacman.Ghost = function (game, map, colour) {
     };
     
     return {
+        "getPosition" : getPosition,
         "eat"         : eat,
         "isVunerable" : isVunerable,
         "isDangerous" : isDangerous,
@@ -291,6 +298,7 @@ Pacman.User = function (game, map) {
     keyMap[KEY.ARROW_RIGHT] = RIGHT;
     keyMap[KEY.ARROW_DOWN]  = DOWN;
 
+
     function addScore(nScore) { 
         score += nScore;
         if (score >= 10000 && score - nScore < 10000) { 
@@ -309,6 +317,14 @@ Pacman.User = function (game, map) {
     function getLives() {
         return lives;
     };
+
+    function getPosition() {
+        return position.clone() ?? null;
+    }
+
+    function getDirection() {
+        return direction;
+    }
 
     function initUser() {
         score = 0;
@@ -387,7 +403,7 @@ Pacman.User = function (game, map) {
     };
 
     function move(ctx) {
-        
+
         var npos        = null, 
             nextWhole   = null, 
             oldPosition = position,
@@ -514,6 +530,8 @@ Pacman.User = function (game, map) {
     initUser();
 
     return {
+        "getDirection"  : getDirection,
+        "getPosition"   : getPosition,
         "draw"          : draw,
         "drawDead"      : drawDead,
         "loseLife"      : loseLife,
@@ -537,6 +555,10 @@ Pacman.Map = function (size) {
         pillSize  = 0,
         map       = null;
     
+    function getMap(){
+        return map;
+    }
+
     function withinBounds(y, x) {
         return y >= 0 && y < height && x >= 0 && x < width;
     }
@@ -674,6 +696,7 @@ Pacman.Map = function (size) {
     reset();
     
     return {
+        "getMap"       : getMap,
         "draw"         : draw,
         "drawBlock"    : drawBlock,
         "drawPills"    : drawPills,
@@ -964,6 +987,7 @@ var PACMAN = (function () {
         map.drawPills(ctx);
 
         if (state === PLAYING) {
+            Pacman.Player.play();
             mainDraw();
         } else if (state === WAITING && stateChanged) {            
             stateChanged = false;
@@ -1027,7 +1051,7 @@ var PACMAN = (function () {
         }
     };
     
-    function init(wrapper, root) {
+    function init(wrapper, root, player) {
         
         var i, len, ghost,
             blockSize = wrapper.offsetWidth / 19,
@@ -1066,6 +1090,7 @@ var PACMAN = (function () {
             ["eating2", root + "audio/eating.short." + extension]
         ];
 
+        Pacman.Player = new player(user,map,ghosts);
         load(audio_files, function() { loaded(); });
     };
 
