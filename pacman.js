@@ -21,7 +21,7 @@ var NONE        = 4,
     DYING       = 10,
     Pacman      = {};
 
-Pacman.FPS = 30;
+Pacman.FPS = 100;
 
 Pacman.Player = null;
 
@@ -47,6 +47,10 @@ Pacman.Ghost = function (game, map, colour) {
 
     function getPosition(){
         return position.clone() ?? null;
+    }
+
+    function getEatable() {
+        return eatable;
     }
 
     /* Collision detection(walls) is done when a ghost lands on an
@@ -272,6 +276,7 @@ Pacman.Ghost = function (game, map, colour) {
     };
     
     return {
+        "getEatable"  : getEatable,
         "getPosition" : getPosition,
         "eat"         : eat,
         "isVunerable" : isVunerable,

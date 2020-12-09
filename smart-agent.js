@@ -1,25 +1,72 @@
 
 const Player = (function (user,map,ghosts){
 
+    var waitPlays = 0;
     const directions = {"UP": 3, "DOWN": 1, "RIGHT": 11, "LEFT": 2};
-    const mapItems = {"WALL": 0,"BISCUIT": 1, "EMPTY": 2, "BLOCK": 3,"PILL": 4, "GHOST": 5};
+    const mapItems = {"WALL": 0,"BISCUIT": 1, "EMPTY": 2, "BLOCK": 3,"PILL": 4, "GHOST": 5 , "EATABLE_GHOST": 6};
     const directionsKeys = {"LEFT" : 37,"UP": 38,"RIGHT": 39,"DOWN": 40}
 
     function nextMove(directionsStatus,currentDir){
         let availableDir = [];
-        let bestDir = [];
+        let goodDir = [];
+        let bestDir = null;
+        let currentDirIsAvailable = false;
+        //Getting the available directions
         for (let index in directionsStatus) {
-            if (!(directionsStatus[index].item === mapItems.GHOST ||
-                directionsStatus[index].item === mapItems.WALL && directionsStatus[index].distance == 0)){
-                if (directions[index] === currentDir) return null;
-                availableDir.push(index);
+            //it makes the player avoid walls, blocks and ghosts
+            if (!(directionsStatus[index].item === mapItems.GHOST 
+                || (directionsStatus[index].item === mapItems.WALL || directionsStatus[index].item === mapItems.BLOCK)
+                && directionsStatus[index].distance == 0 || index == "clone")){
+                    if (directions[index] == currentDir) currentDirIsAvailable = true;
+                    availableDir.push(index);
             }
         }
-        
 
-        return bestDir.length > 0 
-            ? bestDir[Math.floor(Math.random()*(bestDir.length-1))] 
-            : availableDir[Math.floor(Math.random()*(availableDir.length-1))]
+        //Avoid to unnecessary changes of direction
+        const allDirEmpty = availableDir.reduce((carry, direction) => {
+            let status = directionsStatus[direction]
+            return (status.item == mapItems.EMPTY 
+                || status.item == mapItems.WALL && status.distance > 0)
+                && carry;
+        }, true)
+        if(allDirEmpty && currentDirIsAvailable) {
+            waitPlays = 3;
+            return null;
+        }
+
+        //Getting good options
+        for (const direction of availableDir) {
+            if (directionsStatus[direction].item == mapItems.BISCUIT
+                || directionsStatus[direction].item == mapItems.PILL
+                || directionsStatus[direction].item == mapItems.EATABLE_GHOST){
+                    if (directions[direction] == currentDir) return null;
+                    goodDir.push(direction);
+                }
+        }
+
+        //Getting the best option to make a Greedy choice
+        for (const direction of goodDir) {
+            if (directionsStatus[direction].item == mapItems.EATABLE_GHOST 
+                || directionsStatus[direction].item == mapItems.PILL){
+                    bestDir = direction;
+                    break;
+                }
+            if(directionsStatus[bestDir]?.distance < directionsStatus[direction].distance)
+                bestDir = direction;
+        }
+
+        if(bestDir) return bestDir;
+
+        let sameDir = currentDir == 4/*NONE*/ ? ["UP", "DOWN", "RIGHT", "LEFT"] : (currentDir == directions.LEFT || currentDir == directions.RIGHT) ? 
+            ["UP", "DOWN"] : ["RIGHT", "LEFT"];
+        
+        if (goodDir.length > 0){ 
+            return goodDir[Math.floor(Math.random()*goodDir.length)] 
+        } else {
+            let intersection = availableDir.filter(x => sameDir.includes(x));
+            waitPlays = 2;
+            return intersection[Math.floor(Math.random()*intersection.length)] ?? availableDir[Math.floor(Math.random()*availableDir.length)]
+        }
     }
 
     function getNextPos(position,direction) {
@@ -43,7 +90,7 @@ const Player = (function (user,map,ghosts){
 
     function getDirectionsStatus(){
         let directionsStatus = []
-        const searchLength = 5
+        const searchLength = 4
         let currentPos = user.getPosition()
         //Acquiring the ghosts and user position, fitted to the squared
         currentPos.x = Math.round(currentPos.x/10)
@@ -66,15 +113,35 @@ const Player = (function (user,map,ghosts){
             let nextPos = currentPos
             let i = 0
 
-            //search in this direction any item
+            //search for ghosts in this direction
+            if(mustVerifyGhosts){
+                while (directionsStatus[index] == null && i < searchLength-2) {
+                    nextPos = getNextPos(nextPos,directions[index])
+
+                    for (let ghostIndex in ghostsPos) {
+                        if (ghostsPos[ghostIndex].x === nextPos.x && ghostsPos[ghostIndex].y === nextPos.y){
+                            directionsStatus[index] = {
+                                "item" : ghosts[ghostIndex].getEatable() ? mapItems.EATABLE_GHOST : mapItems.GHOST,
+                                "distance": i,
+                            }
+                            continue
+                        }
+                    }
+                    i++
+                }
+            }
+
+            nextPos = currentPos
+            i = 0
+            //search any item in this direction 
             while (directionsStatus[index] == null && i < searchLength) {
                 nextPos = getNextPos(nextPos,directions[index])
 
                 if(mustVerifyGhosts)
-                    for (const ghost of ghostsPos) {
-                        if (ghost.x === nextPos.x && ghost.y === nextPos.y){
+                    for (let ghostIndex in ghostsPos) {
+                        if (ghostsPos[ghostIndex].x === nextPos.x && ghostsPos[ghostIndex].y === nextPos.y){
                             directionsStatus[index] = {
-                                "item" : mapItems["GHOST"],
+                                "item" : ghosts[ghostIndex].getEatable() ? mapItems.EATABLE_GHOST : mapItems.GHOST,
                                 "distance": i,
                             }
                             continue
@@ -103,8 +170,14 @@ const Player = (function (user,map,ghosts){
     }
 
     function play(){
+        if (waitPlays > 0){
+            waitPlays--;
+            return;
+        }
         let status = getDirectionsStatus();
-        var nextKey = directionsKeys[nextMove(status,user.getDirection())]
+        let nextDirection = nextMove(status,user.getDirection())
+        var nextKey = directionsKeys[nextDirection]
+        //console.log(status,nextDirection)
         if (nextKey)
             document.dispatchEvent(new KeyboardEvent('keydown',{'keyCode':nextKey}));
     }
