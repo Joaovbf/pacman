@@ -21,6 +21,7 @@ var NONE        = 4,
     DYING       = 10,
     Pacman      = {};
 
+Pacman.passos = 0;
 Pacman.FPS = 30;
 
 Pacman.Player = null;
@@ -397,6 +398,7 @@ Pacman.User = function (game, map) {
     };
 
     function onGridSquare(pos) {
+        Pacman.passos++;
         return onWholeSquare(pos.y) && onWholeSquare(pos.x);
     };
 
@@ -815,7 +817,8 @@ var PACMAN = (function () {
         timer        = null,
         map          = null,
         user         = null,
-        stored       = null;
+        stored       = null,
+        initTime     = null;
 
     function getTick() { 
         return tick;
@@ -847,6 +850,8 @@ var PACMAN = (function () {
             ghosts[i].reset();
         }
         audio.play("start");
+        initTime = new Date()
+        Pacman.passos = 0;
         timerStart = tick;
         setState(COUNTDOWN);
     }    
@@ -1044,6 +1049,7 @@ var PACMAN = (function () {
     function completedLevel() {
         setState(WAITING);
         level += 1;
+        alert("Time elapsed: "+(((new Date()).getTime()-initTime.getTime()) / (1000))+" Seconds\n"+Pacman.passos+" Plays")
         map.reset();
         user.newLevel();
         startLevel();
@@ -1076,10 +1082,10 @@ var PACMAN = (function () {
             "eatenPill"      : eatenPill 
         }, map);
 
-        // for (i = 0, len = ghostSpecs.length; i < len; i += 1) {
-        //     ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i]);
-        //     ghosts.push(ghost);
-        // }
+        for (i = 0, len = ghostSpecs.length; i < len; i += 1) {
+            ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i]);
+            ghosts.push(ghost);
+        }
         
         map.draw(ctx);
         dialog("Loading ...");
