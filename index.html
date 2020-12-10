@@ -43,12 +43,12 @@
   <script src="modernizr-1.5.min.js"></script>
 
   <script>
-
+    const reportedSearch = confirm("Do you want a reported search?")
     var el = document.getElementById("pacman");
     
     if (Modernizr.canvas && Modernizr.localstorage && 
         Modernizr.audio && (Modernizr.audio.ogg || Modernizr.audio.mp3)) {
-      window.setTimeout(() => {PACMAN.init(el, "./",Player); }, 0);
+      window.setTimeout(() => {PACMAN.init(el, "./",reportedSearch ? ReportedPlayer : UnreportedPlayer); }, 0);
     } else { 
       el.innerHTML = "Sorry, needs a decent browser<br /><small>" + 
         "(firefox 3.6+, Chrome 4+, Opera 10+ and Safari 4+)</small>";

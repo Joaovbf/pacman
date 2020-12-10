@@ -1,5 +1,12 @@
-
-const Player = (function (user,map,ghosts){
+/**
+ * A player who uses the Greedy Search as search strategy, 
+ * looking to nearests map items in the four directions, without memory.
+ * 
+ * @param {*} user 
+ * @param {*} map 
+ * @param {*} ghosts 
+ */
+const UnreportedPlayer = (function (user,map,ghosts){
 
     var waitPlays = 0;
     const directions = {"UP": 3, "DOWN": 1, "RIGHT": 11, "LEFT": 2};
@@ -137,16 +144,6 @@ const Player = (function (user,map,ghosts){
             while (directionsStatus[index] == null && i < searchLength) {
                 nextPos = getNextPos(nextPos,directions[index])
 
-                if(mustVerifyGhosts)
-                    for (let ghostIndex in ghostsPos) {
-                        if (ghostsPos[ghostIndex].x === nextPos.x && ghostsPos[ghostIndex].y === nextPos.y){
-                            directionsStatus[index] = {
-                                "item" : ghosts[ghostIndex].getEatable() ? mapItems.EATABLE_GHOST : mapItems.GHOST,
-                                "distance": i,
-                            }
-                            continue
-                        }
-                    }
                 let mapItem = map.getMap()[nextPos.y][nextPos.x]
                 if (mapItem == mapItems.EMPTY) {
                     i++
@@ -178,6 +175,142 @@ const Player = (function (user,map,ghosts){
         let nextDirection = nextMove(status,user.getDirection())
         var nextKey = directionsKeys[nextDirection]
         //console.log(status,nextDirection)
+        if (nextKey)
+            document.dispatchEvent(new KeyboardEvent('keydown',{'keyCode':nextKey}));
+    }
+
+    return {
+        "play": play
+    }
+})
+
+/**
+ * 
+ * @param {*} user 
+ * @param {*} map 
+ * @param {*} ghosts 
+ */
+const ReportedPlayer = (function (user,map,ghosts){
+
+    var distancesMap;
+    var waitPlays = 0;
+    const directions = {"UP": 3, "DOWN": 1, "RIGHT": 11, "LEFT": 2};
+    const mapItems = {"WALL": 0,"BISCUIT": 1, "EMPTY": 2, "BLOCK": 3,"PILL": 4, "GHOST": 5 , "EATABLE_GHOST": 6};
+    const directionsKeys = {"LEFT" : 37,"UP": 38,"RIGHT": 39,"DOWN": 40}
+
+    function updateDistancesMap(map){
+        distancesMap = map.map(row => row.map(mapItem => {
+            if (mapItem == mapItems.WALL || mapItem == mapItems.BLOCK) return 0
+
+            if (mapItem == mapItems.BISCUIT || mapItem == mapItems.PILL) return "*"
+                
+            return null
+        }));
+    }
+
+    function getNeighborCells(position) {
+        let neighbors = []
+        for (let direction in directions) {
+            neighbors[direction] = getNextPos(position,directions[direction])
+
+            if (map.getMap()[neighbors[direction].y][neighbors[direction].x] == 0) delete neighbors[direction]
+        }
+        return neighbors
+    }
+
+    function nextMove(position){
+        let positionQueue = [];
+        let foundFood = false;
+        let newDirection;
+
+        //initializing queue
+        let neighborCells = getNeighborCells(position)
+        console.log(neighborCells,position,distancesMap)
+        for (const index in neighborCells) {
+            if (index == "clone") continue
+            let mapItem = distancesMap[neighborCells[index].y][neighborCells[index].x]
+            if(mapItem == "*"){
+                foundFood = true
+                newDirection = directions[index]
+                break
+            }
+            distancesMap[neighborCells[index].x][neighborCells[index].y] = directions[index]
+            positionQueue.push(neighborCells[index]);
+        }
+
+        while(positionQueue.length > 0 && !foundFood){
+            position = positionQueue.shift();
+            neighborCells = getNeighborCells(position)
+            for (const index in neighborCells) {
+                let mapItem = distancesMap[neighborCells[index].y][neighborCells[index].x]
+                if(mapItem == "*"){
+                    foundFood = true
+                    newDirection = distancesMap[position.x][position.y]
+                    break
+                }
+                else if(mapItem == null){
+                    distancesMap[neighborCells[index].y][neighborCells[index].x]
+                    positionQueue.push(neighborCells[index])
+                }
+            }
+        }
+        
+        //Converting integer value to string
+        for (let index in directions){
+            if (directions[index] == newDirection) newDirection = index
+        }
+
+        return newDirection;
+    }
+
+    function getNextPos(position,direction) {
+        let xInc = 0
+            , yInc = 0
+
+        if(direction === directions.UP)
+            yInc--;
+        else if(direction === directions.DOWN)
+            yInc++;
+        else if(direction === directions.RIGHT)
+            xInc++;
+        else if(direction === directions.LEFT)
+            xInc--;
+
+        return {
+            x: position.x + xInc,
+            y: position.y + yInc
+        }
+    }
+
+    function getOppositeDirection(direction){
+        switch (direction) {
+            case directions.LEFT:
+                return directions.RIGHT;
+            case directions.RIGHT:
+                return directions.LEFT;
+            case directions.UP:
+                return directions.DOWN;
+            case directions.DOWN:
+                return directions.UP;
+        }
+    }
+
+    function getDirectionsStatus(position){
+        
+    }
+
+    function play(){
+        if (waitPlays > 0){
+            waitPlays--;
+            return;
+        }
+        let position = user.getPosition()
+        position.x = Math.round(position.x/10)
+        position.y = Math.round(position.y/10)
+        updateDistancesMap(map.getMap())
+        let nextDirection = nextMove(position)
+        var nextKey = directionsKeys[nextDirection]
+        console.log(nextDirection)
         if (nextKey)
             document.dispatchEvent(new KeyboardEvent('keydown',{'keyCode':nextKey}));
     }

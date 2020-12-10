@@ -21,7 +21,7 @@ var NONE        = 4,
     DYING       = 10,
     Pacman      = {};
 
-Pacman.FPS = 100;
+Pacman.FPS = 30;
 
 Pacman.Player = null;
 
@@ -1076,10 +1076,10 @@ var PACMAN = (function () {
             "eatenPill"      : eatenPill 
         }, map);
 
-        for (i = 0, len = ghostSpecs.length; i < len; i += 1) {
-            ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i]);
-            ghosts.push(ghost);
-        }
+        // for (i = 0, len = ghostSpecs.length; i < len; i += 1) {
+        //     ghost = new Pacman.Ghost({"getTick":getTick}, map, ghostSpecs[i]);
+        //     ghosts.push(ghost);
+        // }
         
         map.draw(ctx);
         dialog("Loading ...");
